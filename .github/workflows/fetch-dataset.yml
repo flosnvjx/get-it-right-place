@@ -1,0 +1,58 @@
+name: Fetch dataset and bundle them
+on:
+  workflow_dispatch:
+    inputs:
+      scheme:
+        required: true
+        description: Scheme of resource identifier
+        type: choice
+        default: mg
+        options:
+          - drv-gogl
+          - mg
+      id:
+        required: true
+        description: Dataset resource identifier
+      rename:
+        description: Rename the dataset
+defaults:
+  run:
+    shell: bash
+env:
+  resScheme: ${{ inputs.scheme }}
+  resId: ${{ inputs.id }}
+  resRename: ${{ inputs.rename }}
+jobs:
+  aio:
+    name: AIO
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Setup environment
+        run: |
+          if test "$resScheme" = mg;then
+            sudo apt-get install --no-install-recommends -y megatools
+          fi
+      - name: Fetch dataset
+        run: |
+          main() {
+            mkdir d/
+            local useURI=($(printf %s "$resId" | grep -oEe '((https://|http://|)mega\.(|\.co)nz/(file|#)/[-#0-9A-Za-z!_]+)'))
+            if [[ "${#useURI}" -gt 0 ]];then
+              if [ "$resScheme" = mg ];then
+                megadl --path ./d/ ${useURI[@]}
+              else
+                false
+              fi
+            else
+              false
+            fi
+          }
+          main
+      - name: Bundle
+        run: |
+          tar -cf - ./d | zstd -20 > output.tzst
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          path: output.tzst
+          if-no-files-found: error
