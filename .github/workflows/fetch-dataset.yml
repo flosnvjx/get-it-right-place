@@ -8,7 +8,7 @@ on:
         type: choice
         default: mg
         options:
-          - drv-gogl
+          - dm
           - mg
       id:
         required: true
@@ -31,28 +31,53 @@ jobs:
         run: |
           if test "$resScheme" = mg;then
             sudo apt-get install --no-install-recommends -y megatools
+          elif test "$resScheme" = dm; then
+            go install github.com/bake/mdl@latest
           fi
       - name: Fetch dataset
         run: |
-          main() {
-            mkdir d/
+          mkdir d/
+          mg() {
             local useURI=($(printf %s "$resId" | grep -oEe '((https://|http://|)mega\.(|\.co)nz/(file|#)/[-#0-9A-Za-z!_]+)'))
             if [[ "${#useURI}" -gt 0 ]];then
-              if [ "$resScheme" = mg ];then
-                megadl --path ./d/ ${useURI[@]}
-              else
-                false
-              fi
+              megadl --path ./d/ ${useURI[@]}
             else
               false
             fi
           }
-          main
-      - name: Bundle
+          dm() {
+            export PATH=$PATH:$HOME/go/bin
+            local useURI="$(printf %s "$resId" | grep -oEe '(https://www\.do.gm.n.anhua\.cn/[^ ]+)' | tail -n1)"
+            if [[ "${#useURI}" -ne 0 ]]; then
+              mdl -format=png -out=./d -worker=1 "$useURI"
+            else
+              false
+            fi
+          }
+          set -x
+          if test "$resScheme" = mg;then mg
+          elif test "$resScheme" = dm;then dm
+          else
+            false
+          fi
+          if test -n "$resRename";then
+            local testfn="$(basename -- "$resRename")"
+            if test "${#testfn}" -gt 1 && test "$testfn" != /;then
+              export finalFilename="$testfn"
+            else
+              export finalFilename="$(basename -- "${useURI}")"
+            fi
+          else
+            export finalFilename="$(basename -- "${useURI}")"
+          fi
+          echo finalFilename=$finalFilename >> $GITHUB_ENV
+      - name: bundle
         run: |
-          tar -cf - ./d | zstd -20 > output.tzst
+          cd d/
+          tar -cf ../"$finalFilename".t .
       - name: Upload
         uses: actions/upload-artifact@v3
         with:
-          path: output.tzst
+          path: ${{ env.finalFilename }}.t
+          name: ${{ env.finalFilename }}.t.zip
           if-no-files-found: error
