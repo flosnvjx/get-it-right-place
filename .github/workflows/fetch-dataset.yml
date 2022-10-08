@@ -10,6 +10,7 @@ on:
         options:
           - dm
           - mg
+          - youget
       id:
         required: true
         description: Dataset resource identifier
@@ -33,14 +34,25 @@ jobs:
             sudo apt-get install --no-install-recommends -y megatools
           elif test "$resScheme" = dm; then
             go install github.com/bake/mdl@latest
+          elif test "$resScheme" = youget; then
+            sudo apt-get install --no-install-recommends -y ffmpeg
+            sudo pip install you-get
           fi
       - name: Fetch dataset
         run: |
           mkdir d/
           mg() {
-            local useURI=($(printf %s "$resId" | grep -oEe '((https://|http://|)mega\.(|\.co)nz/(file|#)/[-#0-9A-Za-z!_]+)'))
+            local useURI=($(printf %s "$resId" | grep -oEe '((https://|http://|)mega\.(|\.co)nz/(file|folder|#)/[-#0-9A-Za-z!_]+)'))
             if [[ "${#useURI}" -gt 0 ]];then
-              megadl --path ./d/ ${useURI[@]}
+              megadl --path ./d/ "${useURI[@]}"
+            else
+              false
+            fi
+          }
+          youget() {
+            local useURI=($(printf %s "$resId" | grep -oEe '((https://|http://|)[^/]+/[-/#0-9A-Za-z!_?]+)'))
+            if [[ "${#useURI}" -gt 0 ]];then
+              printf '%s\n' "${useURI}" | you-get --debug -o ./d/ -I -
             else
               false
             fi
@@ -57,6 +69,7 @@ jobs:
           set -x
           if test "$resScheme" = mg;then mg
           elif test "$resScheme" = dm;then dm
+          elif test "$resScheme" = youget;then youget
           else
             false
           fi
