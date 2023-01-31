@@ -1,0 +1,40 @@
+name: express()
+run-name: e.(${{ inputs.taskname }})
+on:
+  workflow_dispatch:
+    inputs:
+      taskname:
+        required: true
+      uris:
+        required: true
+      toolchains:
+defaults:
+  run:
+    shell: bash
+env:
+  ci_inputs_uris: ${{ inputs.uris }}
+  ci_inputs_taskname: ${{ inputs.taskname }}
+permissions:
+  actions: write
+jobs:
+  main:
+    if: contains(inputs.uris,'http')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: repo
+        name: checkout()
+      - run: |
+          pwd
+          echo "$GITHUB_WORKFLOW/scripts/scriptbase" >> $GITHUB_PATH
+          echo "$GITHUB_WORKFLOW/scripts/ci" >> $GITHUB_PATH
+      - run: printf '%s' "$ci_inputs_uris" | express fetch "$ci_inputs_taskname"
+        name: main()
+      - uses: actions/upload-artifact@v3
+        name: save()
+        with:
+          path: |
+            upload/**/*
+            !upload/**/*.tmp
+          if-no-files-found: error
