@@ -7,7 +7,6 @@ on:
         required: true
       uris:
         required: true
-      toolchains:
 defaults:
   run:
     shell: bash
@@ -26,9 +25,9 @@ jobs:
           path: repo
         name: checkout()
       - run: |
-          pwd
           echo "$GITHUB_WORKFLOW/scripts/scriptbase" >> $GITHUB_PATH
           echo "$GITHUB_WORKFLOW/scripts/ci" >> $GITHUB_PATH
+      - run: printf '%s' "$ci_inputs_uris" | express parsetoolchains
       - run: printf '%s' "$ci_inputs_uris" | express fetch "$ci_inputs_taskname"
         name: main()
       - uses: actions/upload-artifact@v3

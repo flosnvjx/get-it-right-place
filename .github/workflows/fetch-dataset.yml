@@ -36,7 +36,7 @@ jobs:
             go install github.com/bake/mdl@latest
           elif test "$resScheme" = youget; then
             sudo apt-get install --no-install-recommends -y ffmpeg
-            sudo pip install you-get
+            sudo pip install yt-dlp
           fi
       - name: Fetch dataset
         run: |
@@ -52,7 +52,7 @@ jobs:
           youget() {
             local useURI=($(printf %s "$resId" | grep -oEe '((https://|http://|)[^/]+/[-/#0-9A-Za-z!_?]+)'))
             if [[ "${#useURI}" -gt 0 ]];then
-              printf '%s\n' "${useURI}" | you-get --debug -o ./d/ -I -
+              printf '%s\n' "${useURI}" | env -C d yt-dlp --embed-metadata -a -
             else
               false
             fi
