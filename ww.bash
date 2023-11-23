@@ -23,7 +23,7 @@ else
 fi
 if test -n "$resRename";then
   apt install -y icu-devtools
-  local testfn="$(basename -- "$resRename")"
+  testfn="$(basename -- "$resRename")"
   if test "${#testfn}" -gt 1 && test "$testfn" != /;then
     export finalFilename="$testfn"
   else
