@@ -89,7 +89,7 @@ jobs:
           cd d/
           tar -cf ../"$finalFilename".t .
       - name: Upload
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           path: ${{ env.finalFilename }}.t
           name: ${{ env.finalFilename }}.t.zip
