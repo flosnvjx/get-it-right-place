@@ -36,7 +36,9 @@ jobs:
           elif test "$resScheme" = dm; then
             go install github.com/bake/mdl@latest
           elif test "$resScheme" = od; then
-            go install github.com/IcyBleu17/onedrive-dl@latest
+            git clone https://github.com/IcyBlue17/Onedrive-dl
+            mkdir -p ~/go/bin
+            env -C Onedrive-dl/ go build -o ~/go/bin/ .
           elif test "$resScheme" = youget; then
             sudo apt-get install --no-install-recommends -y ffmpeg
             sudo pip install yt-dlp
