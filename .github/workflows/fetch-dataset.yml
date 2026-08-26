@@ -41,7 +41,9 @@ jobs:
             mkdir -p ~/go/bin
             env -C Onedrive-dl/ go build -o ~/go/bin/ .
           elif test "$resScheme" = gd; then
-            go install github.com/tanaikech/goodls/cmd/goodls@latest
+            git clone https://github.com/tanaikech/goodls
+            mkdir -p ~/go/bin
+            env -C goodls go build -o ~/go/bin cmd/goodls
           elif test "$resScheme" = youget; then
             sudo apt-get install --no-install-recommends -y ffmpeg
             sudo pip install yt-dlp
