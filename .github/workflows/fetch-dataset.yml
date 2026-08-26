@@ -43,7 +43,7 @@ jobs:
           elif test "$resScheme" = gd; then
             git clone https://github.com/tanaikech/goodls
             mkdir -p ~/go/bin
-            env -C goodls go build -o ~/go/bin cmd/goodls
+            env -C goodls go build -o ~/go/bin ./cmd/goodls
           elif test "$resScheme" = youget; then
             sudo apt-get install --no-install-recommends -y ffmpeg
             sudo pip install yt-dlp
