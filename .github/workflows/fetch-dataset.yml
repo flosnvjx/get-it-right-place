@@ -11,6 +11,7 @@ on:
           - dm
           - od
           - mg
+          - gd
           - youget
       id:
         required: true
@@ -27,7 +28,7 @@ env:
 jobs:
   aio:
     name: AIO
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Setup environment
         run: |
@@ -39,6 +40,8 @@ jobs:
             git clone https://github.com/IcyBlue17/Onedrive-dl
             mkdir -p ~/go/bin
             env -C Onedrive-dl/ go build -o ~/go/bin/ .
+          elif test "$resScheme" = gd; then
+            go install github.com/tanaikech/goodls/cmd/goodls@latest
           elif test "$resScheme" = youget; then
             sudo apt-get install --no-install-recommends -y ffmpeg
             sudo pip install yt-dlp
@@ -79,10 +82,20 @@ jobs:
               false
             fi
           }
+          gd() {
+            export PATH=$PATH:$HOME/go/bin
+
+            if [[ "${#resId}" -ne 0 ]]; then
+              env -C d goodls -u "$resId"
+            else
+              false
+            fi
+          }
           set -x
           if test "$resScheme" = mg;then mg
           elif test "$resScheme" = dm;then dm
           elif test "$resScheme" = od;then od
+          elif test "$resScheme" = gd;then gd
           elif test "$resScheme" = youget;then youget
           else
             false
