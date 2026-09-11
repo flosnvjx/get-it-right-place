@@ -63,14 +63,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           if [ -d /etc/apt/sources.list.d ]; then
             find /etc/apt/sources.list.d -maxdepth 1 -type f \
               ! -name '*.disabled' \
               \( -name '*microsoft*' -o -name '*azure*' -o -name '*github*' \
                  -o -name '*vscode*' -o -name '*google-chrome*' \
                  -o -name '*nodesource*' -o -name '*yarn*' \) \
-              -exec mv '{}' '{}'.disabled \;
+              -exec sudo mv '{}' '{}'.disabled \;
           fi
           export DEBIAN_FRONTEND=noninteractive
           sudo apt-get -qq -o APT::Progress-Fancy=0 update >/dev/null
@@ -90,12 +89,15 @@ jobs:
         run: |
           set -euo pipefail
 
-          mapfile -t IF_ARGS < <(python3 -c 'import shlex,sys; print("\n".join(shlex.split(sys.argv[1])))' "$IF_PARAM")
-          mapfile -t OF_ARGS < <(python3 -c 'import shlex,sys; print("\n".join(shlex.split(sys.argv[1])))' "$OF_PARAM")
+          IF_ARGS=()
+          OF_ARGS=()
+
+          [[ -n "$IF_PARAM" ]] && mapfile -d '' -t IF_ARGS < <(python3 -c 'import shlex,sys; for a in shlex.split(sys.argv[1]): sys.stdout.write(a + "\0")' "$IF_PARAM")
+          [[ -n "$OF_PARAM" ]] && mapfile -d '' -t OF_ARGS < <(python3 -c 'import shlex,sys; for a in shlex.split(sys.argv[1]): sys.stdout.write(a + "\0")' "$OF_PARAM")
 
           [[ -n "$IF_REF" ]] && IF_ARGS+=(-referer "$IF_REF")
 
-          ffgetmks \
+          ffgetmks --verbose \
             -nostats \
             "${IF_ARGS[@]}" \
             -i "$IF_SRC" \
@@ -105,5 +107,6 @@ jobs:
       - name: push()
         uses: actions/upload-artifact@v4
         with:
+          name: ${{ inputs.of }}
           path: 'runtime-data/**/*'
           retention-days: 7
