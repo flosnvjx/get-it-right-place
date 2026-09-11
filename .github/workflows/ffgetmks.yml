@@ -1,0 +1,109 @@
+name: ffgetmks()
+on:
+  workflow_dispatch:
+    inputs:
+      ifsrc:
+        required: true
+        type: string
+      of:
+        required: true
+        type: string
+      ifref:
+        required: false
+        type: string
+      ifparam:
+        required: false
+        type: string
+      ofparam:
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  run-job:
+    name: >-
+      ${{
+        (
+          (startsWith(inputs.ifsrc, 'http://') || startsWith(inputs.ifsrc, 'https://'))
+          && inputs.ifsrc != 'http://'
+          && inputs.ifsrc != 'https://'
+          && inputs.of != ''
+          && inputs.of != '.'
+          && inputs.of != '..'
+          && !contains(inputs.of, '/')
+        )
+        && inputs.of
+        || format('[:invalid-input] {0}', inputs.of)
+      }}
+
+    if: >-
+      ${{
+        (startsWith(inputs.ifsrc, 'http://') || startsWith(inputs.ifsrc, 'https://'))
+        && inputs.ifsrc != 'http://'
+        && inputs.ifsrc != 'https://'
+        && inputs.of != ''
+        && inputs.of != '.'
+        && inputs.of != '..'
+        && !contains(inputs.of, '/')
+      }}
+
+    runs-on: ubuntu-latest
+
+    env:
+      IF_SRC:   ${{ inputs.ifsrc }}
+      IF_REF:   ${{ inputs.ifref }}
+      OF:       ${{ inputs.of }}
+      IF_PARAM: ${{ inputs.ifparam }}
+      OF_PARAM: ${{ inputs.ofparam }}
+
+    steps:
+      - name: depends()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -d /etc/apt/sources.list.d ]; then
+            find /etc/apt/sources.list.d -maxdepth 1 -type f \
+              ! -name '*.disabled' \
+              \( -name '*microsoft*' -o -name '*azure*' -o -name '*github*' \
+                 -o -name '*vscode*' -o -name '*google-chrome*' \
+                 -o -name '*nodesource*' -o -name '*yarn*' \) \
+              -exec mv '{}' '{}'.disabled \;
+          fi
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get -qq -o APT::Progress-Fancy=0 update >/dev/null
+          sudo apt-get -qq -o APT::Progress-Fancy=0 \
+            -o Dpkg::Progress-Fancy=0 \
+            -o Dpkg::Use-Pty=0 \
+            install -y --no-install-recommends \
+            -- ffmpeg >/dev/null
+
+          git clone --depth 1 --single-branch --no-tags "https://github.com/flosnvjx/scriptbase" scriptbase
+          echo "${{ github.workspace }}/scriptbase" >> "$GITHUB_PATH"
+          mkdir -p runtime-data
+
+      - name: package()
+        working-directory: runtime-data
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t IF_ARGS < <(python3 -c 'import shlex,sys; print("\n".join(shlex.split(sys.argv[1])))' "$IF_PARAM")
+          mapfile -t OF_ARGS < <(python3 -c 'import shlex,sys; print("\n".join(shlex.split(sys.argv[1])))' "$OF_PARAM")
+
+          [[ -n "$IF_REF" ]] && IF_ARGS+=(-referer "$IF_REF")
+
+          ffgetmks \
+            -nostats \
+            "${IF_ARGS[@]}" \
+            -i "$IF_SRC" \
+            "${OF_ARGS[@]}" \
+            "$OF"
+
+      - name: push()
+        uses: actions/upload-artifact@v4
+        with:
+          path: 'runtime-data/**/*'
+          retention-days: 7
