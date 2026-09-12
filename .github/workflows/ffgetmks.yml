@@ -23,32 +23,7 @@ permissions:
 
 jobs:
   run-job:
-    name: >-
-      ${{
-        (
-          (startsWith(inputs.ifsrc, 'http://') || startsWith(inputs.ifsrc, 'https://'))
-          && inputs.ifsrc != 'http://'
-          && inputs.ifsrc != 'https://'
-          && inputs.of != ''
-          && inputs.of != '.'
-          && inputs.of != '..'
-          && !contains(inputs.of, '/')
-        )
-        && inputs.of
-        || format('[:invalid-input] {0}', inputs.of)
-      }}
-
-    if: >-
-      ${{
-        (startsWith(inputs.ifsrc, 'http://') || startsWith(inputs.ifsrc, 'https://'))
-        && inputs.ifsrc != 'http://'
-        && inputs.ifsrc != 'https://'
-        && inputs.of != ''
-        && inputs.of != '.'
-        && inputs.of != '..'
-        && !contains(inputs.of, '/')
-      }}
-
+    name: ${{ inputs.of }}
     runs-on: ubuntu-latest
 
     env:
@@ -63,6 +38,30 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          python3 - <<'PY'
+          import os, sys
+          from urllib.parse import urlsplit
+          u = urlsplit(os.environ["IF_SRC"])
+          if u.scheme not in ("http", "https") or not u.hostname:
+              sys.exit(f"::error::ifsrc must be a legal http(s) URL, got: {os.environ['IF_SRC']!r}")
+          PY
+
+          # --- of: single filename; leading './' components tolerated ---
+          name="$OF"
+          while [[ "$name" == ./* ]]; do
+            name="${name#./}"
+          done
+          if [[ -z "$name" || "$name" == "." || "$name" == ".." || "$name" == */* ]]; then
+            echo "::error::of must be a single filename with no directory component and not '.' or '..', got: '$OF'"
+            exit 1
+          fi
+          if ! [[ "$(printf '%s' "$name" | wc -c)" -le 255 ]]; then
+            echo "::error::of exceeds Linux NAME_MAX (255 bytes)"
+            exit 1
+          fi
+
+          # --- install deps ---
           if [ -d /etc/apt/sources.list.d ]; then
             find /etc/apt/sources.list.d -maxdepth 1 -type f \
               ! -name '*.disabled' \
