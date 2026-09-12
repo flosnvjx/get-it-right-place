@@ -39,13 +39,51 @@ jobs:
         run: |
           set -euo pipefail
 
-          python3 - <<'PY'
-          import os, sys
-          from urllib.parse import urlsplit
-          u = urlsplit(os.environ["IF_SRC"])
-          if u.scheme not in ("http", "https") or not u.hostname:
-              sys.exit(f"::error::ifsrc must be a legal http(s) URL, got: {os.environ['IF_SRC']!r}")
-          PY
+
+          URL_RE='^https?://([^@/?#[:space:]]*@)?(\[[0-9A-Fa-f:.]+\]|[A-Za-z0-9._~-]+)(:[0-9]+)?(/[^?#[:space:]]*)?(\?[^#[:space:]]*)?(#[^[:space:]]*)?$'
+          MAGNET_RE='^magnet:\?xt=urn:btih:([A-Za-z0-9]+)(&[^[:space:]]*)?$'
+          if [[ "$IF_SRC" =~ $URL_RE ]]; then
+            : is http/https url
+          elif [[ "$IF_SRC" =~ $MAGNET_RE ]]; then
+            HASH="${BASH_REMATCH[1]}"
+
+            if [[ ${#HASH} -eq 32 ]]; then
+
+              HEX="$(python3 -c "
+                  import base64
+                  import sys
+                  h = sys.argv[1].upper()
+                  pad = (8 - len(h) % 8) % 8
+                  h += '=' * pad
+                  decoded = base64.b32decode(h)
+                  assert len(decoded) == 20, 'decoded length mismatch'
+                  print(decoded.hex())
+                  " "$HASH")"
+
+              if [[ $? -ne 0 || -z "$HEX" ]]; then
+                echo "::error::failed to convert Base32 btih to Hex, got: '$HASH'"
+                exit 1
+              fi
+
+              IF_SRC="$(python3 -c "
+                  import sys, re
+                  src, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
+                  src = re.sub(r'xt=urn:btih:' + re.escape(old), 'xt=urn:btih:' + new, src)
+                  print(src)
+                  " "$IF_SRC" "$HASH" "$HEX")"
+              echo "IF_SRC=$IF_SRC" >> "$GITHUB_ENV"
+
+            elif [[ ${#HASH} -eq 40 ]]; then
+              : "btih is Hex (40 chars), no conversion needed"
+            else
+              echo "::error::unsupported btih length: ${#HASH} (expected 32 or 40), got: '$HASH'"
+              exit 1
+            fi
+          else
+            echo "::error::ifsrc must be a legal http(s) URL or magnet URI, got: '$IF_SRC'"
+            exit 1
+          fi
+
 
           # --- of: single filename; leading './' components tolerated ---
           name="$OF"
