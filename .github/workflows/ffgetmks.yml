@@ -73,7 +73,7 @@ jobs:
           " "$IF_SRC" "$HASH" "$HEX")"
               echo "IF_SRC=$IF_SRC" >> "$GITHUB_ENV"
 
-            elif [[ ${#HASH} -eq 40 ]]; then
+            elif [[ ${#HASH} -eq 40 ]] && [[ "$HASH" =~ ^[a-fA-F0-9]+$ ]]; then
               : "btih is Hex (40 chars), no conversion needed"
             else
               echo "::error::unsupported btih length: ${#HASH} (expected 32 or 40), got: '$HASH'"
