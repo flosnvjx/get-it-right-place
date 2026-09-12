@@ -50,15 +50,15 @@ jobs:
             if [[ ${#HASH} -eq 32 ]]; then
 
               HEX="$(python3 -c "
-                  import base64
-                  import sys
-                  h = sys.argv[1].upper()
-                  pad = (8 - len(h) % 8) % 8
-                  h += '=' * pad
-                  decoded = base64.b32decode(h)
-                  assert len(decoded) == 20, 'decoded length mismatch'
-                  print(decoded.hex())
-                  " "$HASH")"
+          import base64
+          import sys
+          h = sys.argv[1].upper()
+          pad = (8 - len(h) % 8) % 8
+          h += '=' * pad
+          decoded = base64.b32decode(h)
+          assert len(decoded) == 20, 'decoded length mismatch'
+          print(decoded.hex())
+          " "$HASH")"
 
               if [[ $? -ne 0 || -z "$HEX" ]]; then
                 echo "::error::failed to convert Base32 btih to Hex, got: '$HASH'"
@@ -66,11 +66,11 @@ jobs:
               fi
 
               IF_SRC="$(python3 -c "
-                  import sys, re
-                  src, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
-                  src = re.sub(r'xt=urn:btih:' + re.escape(old), 'xt=urn:btih:' + new, src)
-                  print(src)
-                  " "$IF_SRC" "$HASH" "$HEX")"
+          import sys, re
+          src, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
+          src = re.sub(r'xt=urn:btih:' + re.escape(old), 'xt=urn:btih:' + new, src)
+          print(src)
+          " "$IF_SRC" "$HASH" "$HEX")"
               echo "IF_SRC=$IF_SRC" >> "$GITHUB_ENV"
 
             elif [[ ${#HASH} -eq 40 ]]; then
